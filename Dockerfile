@@ -2,7 +2,6 @@ FROM php:8.2-apache
 
 RUN a2enmod rewrite headers
 
-# Dependencies
 RUN apt-get update && apt-get install -y \
     unzip \
     wget \
@@ -10,9 +9,6 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# -------------------------------
-# Oracle Instant Client (Basic + SDK)
-# -------------------------------
 WORKDIR /tmp
 
 RUN wget https://download.oracle.com/otn_software/linux/instantclient/219000/instantclient-basiclite-linux.x64-21.9.0.0.0dbru.zip \
@@ -25,18 +21,16 @@ RUN wget https://download.oracle.com/otn_software/linux/instantclient/219000/ins
 ENV ORACLE_HOME=/opt/oracle/instantclient_21_9
 ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_21_9
 
-# Register Oracle libs
 RUN echo "/opt/oracle/instantclient_21_9" > /etc/ld.so.conf.d/oracle-instantclient.conf \
  && ldconfig
 
-# -------------------------------
-# Install OCI8 Extension (IMPORTANT)
-# -------------------------------
+# Install OCI8
 RUN pecl channel-update pecl.php.net \
- && echo "instantclient,/opt/oracle/instantclient_21_9" | pecl install oci8 \
- && docker-php-ext-enable oci8
+ && echo "instantclient,/opt/oracle/instantclient_21_9" | pecl install oci8
 
-# Copy your project
+# ✅ Force enable OCI8 (IMPORTANT FIX)
+RUN echo "extension=oci8.so" > /usr/local/etc/php/conf.d/oci8.ini
+
 WORKDIR /var/www/html
 COPY . /var/www/html
 
