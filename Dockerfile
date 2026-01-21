@@ -2,10 +2,13 @@ FROM php:8.2-apache
 
 RUN a2enmod rewrite headers
 
+# Dependencies + build tools
 RUN apt-get update && apt-get install -y \
     unzip \
     wget \
     libaio-dev \
+    build-essential \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # -------------------------------
@@ -20,13 +23,13 @@ RUN wget https://download.oracle.com/otn_software/linux/instantclient/219000/ins
  && rm -f instantclient-basiclite-linux.x64-21.9.0.0.0dbru.zip \
  && rm -f instantclient-sdk-linux.x64-21.9.0.0.0dbru.zip
 
-# Set env vars
 ENV ORACLE_HOME=/opt/oracle/instantclient_21_9
 ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_21_9
 
-# Required symlinks
+# Symlink + register library path (MOST IMPORTANT)
 RUN ln -s /opt/oracle/instantclient_21_9/libclntsh.so.21.1 /opt/oracle/instantclient_21_9/libclntsh.so || true \
- && ln -s /opt/oracle/instantclient_21_9/libocci.so.21.1 /opt/oracle/instantclient_21_9/libocci.so || true
+ && echo "/opt/oracle/instantclient_21_9" > /etc/ld.so.conf.d/oracle-instantclient.conf \
+ && ldconfig
 
 # -------------------------------
 # Install PDO_OCI
@@ -35,12 +38,12 @@ RUN docker-php-ext-configure pdo_oci --with-pdo-oci=instantclient,/opt/oracle/in
  && docker-php-ext-install pdo_oci
 
 # -------------------------------
-# Install OCI8 (IMPORTANT FIX)
+# Install OCI8 (optional)
 # -------------------------------
 RUN echo "instantclient,/opt/oracle/instantclient_21_9" | pecl install oci8 \
  && docker-php-ext-enable oci8
 
-# Copy project files
+# Copy project
 WORKDIR /var/www/html
 COPY . /var/www/html
 
