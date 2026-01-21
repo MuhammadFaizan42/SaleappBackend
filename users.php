@@ -10,14 +10,19 @@ if ($_SERVER["REQUEST_METHOD"] !== "GET") {
 }
 
 try {
-    $db = db();
+    $conn = oci_db_connect();
 
-    // ⚠️ Table name change kar sakte hain
-    $sql = "SELECT * FROM users_table";
-    $stmt = $db->prepare($sql);
-    $stmt->execute();
+    $sql = "SELECT * FROM USERS";
+    $stid = oci_parse($conn, $sql);
+    oci_execute($stid);
 
-    $users = $stmt->fetchAll();
+    $users = [];
+    while ($row = oci_fetch_assoc($stid)) {
+        $users[] = $row;
+    }
+
+    oci_free_statement($stid);
+    oci_close($conn);
 
     echo json_encode([
         "success" => true,

@@ -2,13 +2,9 @@
 
 function env($key, $default = null)
 {
-    // First priority: Render / server environment variables
     $val = getenv($key);
-    if ($val !== false && $val !== "") {
-        return $val;
-    }
+    if ($val !== false && $val !== "") return $val;
 
-    // Fallback: local .env file (for localhost testing)
     $path = __DIR__ . "/.env";
     if (!file_exists($path)) return $default;
 
@@ -16,19 +12,17 @@ function env($key, $default = null)
 
     foreach ($lines as $line) {
         if (str_starts_with(trim($line), "#")) continue;
-
         [$k, $v] = array_pad(explode("=", $line, 2), 2, null);
         $k = trim($k);
         $v = trim($v);
         $v = trim($v, "\"'");
-
         if ($k === $key) return $v;
     }
 
     return $default;
 }
 
-function db()
+function oci_db_connect()
 {
     $host = env("DB_HOST");
     $port = env("DB_PORT", "1521");
@@ -36,21 +30,22 @@ function db()
     $username = env("DB_USERNAME");
     $password = env("DB_PASSWORD");
 
-    $dsn = "oci:dbname=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=$host)(PORT=$port))(CONNECT_DATA=(SERVICE_NAME=$service)))";
+    // Oracle EZConnect format
+    $connStr = "$host:$port/$service";
 
-    try {
-        return new PDO($dsn, $username, $password, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-        ]);
-    } catch (PDOException $e) {
+    $conn = oci_connect($username, $password, $connStr, "AL32UTF8");
+
+    if (!$conn) {
+        $e = oci_error();
         http_response_code(500);
         header("Content-Type: application/json; charset=UTF-8");
         echo json_encode([
             "success" => false,
             "message" => "DB Connection Failed",
-            "error" => $e->getMessage()
+            "error" => $e["message"] ?? "Unknown Oracle error"
         ]);
         exit;
     }
+
+    return $conn;
 }

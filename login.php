@@ -9,7 +9,6 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     exit;
 }
 
-// Read JSON input
 $input = json_decode(file_get_contents("php://input"), true);
 
 $email = $input["email"] ?? "";
@@ -21,44 +20,38 @@ if (empty($email) || empty($password)) {
     exit;
 }
 
-try {
-    $db = db();
+$conn = oci_db_connect();
 
-    // ⚠️ Make sure table USERS exists and columns EMAIL, PASSWORD exist
-    $sql = "SELECT ID, NAME, EMAIL, PASSWORD FROM USERS WHERE EMAIL = :email";
-    $stmt = $db->prepare($sql);
-    $stmt->bindParam(":email", $email);
-    $stmt->execute();
+// Find user by email
+$sql = "SELECT ID, NAME, EMAIL, PASSWORD FROM USERS WHERE EMAIL = :email";
+$stid = oci_parse($conn, $sql);
 
-    $user = $stmt->fetch();
+oci_bind_by_name($stid, ":email", $email);
+oci_execute($stid);
 
-    if (!$user) {
-        http_response_code(401);
-        echo json_encode(["success" => false, "message" => "Invalid email or password"]);
-        exit;
-    }
+$user = oci_fetch_assoc($stid);
 
-    // Password Verify (DB me password hashed hona chahiye)
-    if (!password_verify($password, $user["PASSWORD"])) {
-        http_response_code(401);
-        echo json_encode(["success" => false, "message" => "Invalid email or password"]);
-        exit;
-    }
+oci_free_statement($stid);
+oci_close($conn);
 
-    echo json_encode([
-        "success" => true,
-        "message" => "Login successful",
-        "user" => [
-            "id" => $user["ID"],
-            "name" => $user["NAME"],
-            "email" => $user["EMAIL"]
-        ]
-    ]);
-} catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode([
-        "success" => false,
-        "message" => "Login failed",
-        "error" => $e->getMessage()
-    ]);
+if (!$user) {
+    http_response_code(401);
+    echo json_encode(["success" => false, "message" => "Invalid email or password"]);
+    exit;
 }
+
+if (!password_verify($password, $user["PASSWORD"])) {
+    http_response_code(401);
+    echo json_encode(["success" => false, "message" => "Invalid email or password"]);
+    exit;
+}
+
+echo json_encode([
+    "success" => true,
+    "message" => "Login successful",
+    "user" => [
+        "id" => $user["ID"],
+        "name" => $user["NAME"],
+        "email" => $user["EMAIL"]
+    ]
+]);
