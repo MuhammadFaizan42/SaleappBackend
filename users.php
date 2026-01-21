@@ -13,7 +13,7 @@ try {
     $db = db();
 
     // ⚠️ Table name change kar sakte hain
-    $sql = "SELECT * FROM USERS";
+    $sql = "SELECT * FROM users_table";
     $stmt = $db->prepare($sql);
     $stmt->execute();
 
