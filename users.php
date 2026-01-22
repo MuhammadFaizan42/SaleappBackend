@@ -12,7 +12,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "GET") {
 try {
     $conn = oci_db_connect();
 
-    $sql = "SELECT * FROM USERS";
+    $sql = "SELECT * FROM users_table";
     $stid = oci_parse($conn, $sql);
     oci_execute($stid);
 
